@@ -1,6 +1,6 @@
-#[allow(unused_imports)]
 use controllers::p9n_interface;
 
+#[allow(unused_imports)]
 use safe_drive::{
     context::Context,
     error::DynError,
@@ -15,12 +15,15 @@ use std::thread;
 mod functions;
 use functions::*;
 
+use crate::functions::retaining_arm::RetainingArmState;
+
+const NODE_NAME: &str = "main_2025_b";
 fn main() -> Result<(), DynError> {
-    let _logger = Logger::new("director_2024_a");
+    let _logger = Logger::new(NODE_NAME);
     let ctx = Context::new()?;
     let mut selector = ctx.create_selector()?;
-    let node = ctx.create_node("director_2024_a", None, Default::default())?;
-    let joy = node.create_subscriber::<sensor_msgs::msg::Joy>("joy0", None)?;
+    let node = ctx.create_node(NODE_NAME, None, Default::default())?;
+    let joy = node.create_subscriber::<sensor_msgs::msg::Joy>("joy", None)?;
 
     let state = Arc::new(RwLock::new(retaining_arm::RetainingArmState::new()));
 
@@ -29,20 +32,27 @@ fn main() -> Result<(), DynError> {
         retaining_arm::entry(thread_state);
     });
 
-    selector.add_subscriber(joy, Box::new(move |msg: TakenMsg<Joy>| proseed(msg)));
+    selector.add_subscriber(
+        joy,
+        Box::new(move |msg: TakenMsg<Joy>| proseed(msg, (state.clone(), 0))),
+    );
 
     loop {
         selector.wait()?;
     }
 }
 
-fn proseed(msg: TakenMsg<Joy>) {
-    let _logger = Logger::new("director_2024_a");
+fn proseed(msg: TakenMsg<Joy>, states: (Arc<RwLock<RetainingArmState>>, usize)) {
+    let _logger = Logger::new(NODE_NAME);
     let binding = sensor_msgs::msg::Joy::new().unwrap();
     let mut joy = p9n_interface::DualShock4Interface::new(&binding);
     joy.set_joy_msg(&msg);
 
-    if joy.pressed_dpad_up() {
-        pr_info!(_logger, "hoge");
+    let mut tmp = states.0.write().unwrap();
+    if joy.pressed_circle() {
+        tmp.test = 1;
+    }
+    if !joy.pressed_circle() {
+        tmp.test = 0;
     }
 }
