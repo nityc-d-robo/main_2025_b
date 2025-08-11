@@ -1,0 +1,12 @@
+[package]
+name = "main_2025_b"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+safe_drive = "0.4"
+controllers = {git = "https://github.com/nityc-d-robo/controllers",rev = "83c2bfdd368250073e4dbaf3a4ce078a9dac3859"}
+
+
+[package.metadata.ros]
+safe_drive_version = "0.3"
