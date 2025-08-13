@@ -1,31 +1,43 @@
-use motor_lib::{md, Error, GrpcHandle, USBHandle};
+use motor_lib::{md, GrpcHandle};
 use safe_drive::{logger::Logger, pr_info};
 use std::sync::{Arc, RwLock};
+use std::{thread, time};
 
 use crate::NODE_NAME;
 
-const FUNCTION_NAME: &str = "retaining_arm";
-
-pub struct RetainingArmState {
-    pub test: usize,
+pub struct Status {
+    pub left: isize, // 正転　1 停止　0 反転　-1
+    pub right: isize,
 }
-
-impl RetainingArmState {
+impl Status {
     pub fn new() -> Self {
-        RetainingArmState { test: 0 }
+        Self { left: 0, right: 0 }
     }
 }
+pub struct RetainingArm {
+    pub status: Status,
+    handle: GrpcHandle,
+    logger: Logger,
+}
 
-// entryはArcでラップしたRwLockを受け取る設計にする
-pub fn entry(r_a_state: Arc<RwLock<RetainingArmState>>) {
-    let handle = GrpcHandle::new("http://192.168.0.206:50051");
-    let _logger = Logger::new(&format!("{}/{}", NODE_NAME, FUNCTION_NAME));
-    loop {
-        // 参照のみ使いたいときはreadロックを取得
-        let state = r_a_state.read().unwrap();
-        if state.test == 1 {
-            pr_info!(_logger, "on");
-            md::send_pwm(&handle, 0 as u8, 1000 as i16);
+impl RetainingArm {
+    pub const FUNCTION_NAME: &'static str = "retaining_arm";
+
+    pub fn new<U, N>(url: U, node_name: N) -> Self
+    where
+        U: AsRef<str>,
+        N: AsRef<str>,
+    {
+        Self {
+            status: Status::new(),
+            handle: GrpcHandle::new(url.as_ref()),
+            logger: Logger::new(&format!("{}/{}", node_name.as_ref(), Self::FUNCTION_NAME)),
         }
     }
+
+    pub fn update(&mut self) {
+        md::send_pwm(&self.handle, 0 as u8, (1000 * self.status.left) as i16);
+        md::send_pwm(&self.handle, 1 as u8, (1000 * self.status.right) as i16);
+    }
 }
+// entryはArcでラップしたRwLockを受け取る設計にする
