@@ -1,23 +1,24 @@
 use super::*;
+use super::*;
 use motor_lib::{md, GrpcHandle};
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
-    pub left: isize, // 正転　1 停止　0 反転　-1
+    pub ud: isize, // 正転　1 停止　0 反転　-1
     pub right: isize,
 }
 impl Status {
     pub fn new() -> Self {
-        Self { left: 0, right: 0 }
+        Self { ud: 0, right: 0 }
     }
 }
-pub struct RetainingArm {
+pub struct RoofArm {
     pub status: Status,
     handle: GrpcHandle,
     _logger: Logger,
 }
 
-impl RetainingArm {
+impl RoofArm {
     pub fn new<U, N>(url: U, node_name: N) -> Self
     where
         U: AsRef<str>,
@@ -31,7 +32,6 @@ impl RetainingArm {
     }
 
     pub fn update(&mut self) {
-        md::send_pwm(&self.handle, 0 as u8, (1000 * self.status.left) as i16);
-        md::send_pwm(&self.handle, 1 as u8, (1000 * self.status.right) as i16);
+        md::send_pwm(&self.handle, 2 as u8, (400 * self.status.ud) as i16);
     }
 }

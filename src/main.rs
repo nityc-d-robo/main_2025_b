@@ -12,8 +12,11 @@ use safe_drive::{
 };
 mod functions;
 use functions::retaining_arm::RetainingArm;
+use functions::roof_arm::RoofArm;
+
 struct Mechanisms {
-    arm: RetainingArm,
+    re_arm: RetainingArm,
+    ro_arm: RoofArm,
 }
 
 const NODE_NAME: &str = "main_2025_b";
@@ -25,7 +28,8 @@ fn main() -> Result<(), DynError> {
     let joy = node.create_subscriber::<sensor_msgs::msg::Joy>("joy", None)?;
 
     let mut mechanisms = Mechanisms {
-        arm: RetainingArm::new("http://192.168.0.206:50051", NODE_NAME),
+        re_arm: RetainingArm::new("http://192.168.0.206:50051", NODE_NAME),
+        ro_arm: RoofArm::new("http://192.168.0.206:50051", NODE_NAME),
     };
     selector.add_subscriber(
         joy,
@@ -44,14 +48,18 @@ fn proseed(msg: TakenMsg<Joy>, mechanisms: &mut Mechanisms) {
     joy.set_joy_msg(&msg);
 
     if joy.pressed_circle() {
-        mechanisms.arm.status.left = 1;
+        // mechanisms.re_arm.status.left = 1;
+        mechanisms.ro_arm.status.ud = 1;
     }
     if joy.pressed_cross() {
-        mechanisms.arm.status.left = -1;
+        // mechanisms.re_arm.status.left = -1;
+        mechanisms.ro_arm.status.ud = -1;
     }
     if !joy.pressed_circle() && !joy.pressed_cross() {
-        mechanisms.arm.status.left = 0;
+        // mechanisms.re_arm.status.left = 0;
+        mechanisms.ro_arm.status.ud = 0;
     }
 
-    mechanisms.arm.update();
+    mechanisms.re_arm.update();
+    mechanisms.ro_arm.update();
 }
