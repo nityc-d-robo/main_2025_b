@@ -20,3 +20,10 @@ impl HasFunctionName for retaining_arm::RetainingArm {
 impl HasFunctionName for roof_arm::RoofArm {
     const FUNCTION_NAME: &'static str = "roof_arm";
 }
+
+pub enum Adress {
+    RoofArmRight,
+    RoofArmUd,
+    RetainingArmLeft,
+    RetainingArmRight,
+}

@@ -31,7 +31,15 @@ impl RetainingArm {
     }
 
     pub fn update(&mut self) {
-        md::send_pwm(&self.handle, 0 as u8, (1000 * self.status.left) as i16);
-        md::send_pwm(&self.handle, 1 as u8, (1000 * self.status.right) as i16);
+        md::send_pwm(
+            &self.handle,
+            Adress::RetainingArmLeft as u8,
+            (1000 * self.status.left) as i16,
+        );
+        md::send_pwm(
+            &self.handle,
+            Adress::RetainingArmRight as u8,
+            (1000 * self.status.right) as i16,
+        );
     }
 }
