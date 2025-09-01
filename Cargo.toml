@@ -7,6 +7,6 @@ edition = "2021"
 safe_drive = "0.4"
 controllers = {git = "https://github.com/nityc-d-robo/controllers",rev = "ef020ec5291f31652fb064e9081c84c8c3ee55a6"}
 motor_lib = {git = "https://github.com/nityc-d-robo/motor_lib.git",rev = "3fc2993f95a69bb61596fe0d72c498df699ec279"}
-
+omni_control = { git = "https://github.com/nityc-d-robo/omni_control",rev = "0b7351aeacc8de9d21d064cb4a347b4081abba62" }
 [package.metadata.ros]
 safe_drive_version = "0.3"

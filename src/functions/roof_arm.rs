@@ -60,7 +60,7 @@ impl RoofArm {
         md::send_pwm(
             &self.handle,
             Adress::RoofArmRight as u8,
-            (-600 * self.status.right) as i16,
+            (-800 * self.status.right) as i16,
         );
     }
 }

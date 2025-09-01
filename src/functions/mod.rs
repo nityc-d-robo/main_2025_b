@@ -1,3 +1,4 @@
+pub mod omni;
 pub mod retaining_arm;
 pub mod roof_arm;
 
@@ -22,6 +23,10 @@ impl HasFunctionName for roof_arm::RoofArm {
 }
 
 pub enum Adress {
+    OmniFR,
+    OmniFL,
+    OmniBL,
+    OmniBR,
     RoofArmRight,
     RoofArmUd,
     RetainingArmLeft,
