@@ -1,3 +1,4 @@
+pub mod elevator;
 pub mod omni;
 pub mod retaining_arm;
 pub mod roof_arm;
@@ -22,12 +23,18 @@ impl HasFunctionName for roof_arm::RoofArm {
     const FUNCTION_NAME: &'static str = "roof_arm";
 }
 
+impl HasFunctionName for elevator::Elevator {
+    const FUNCTION_NAME: &'static str = "elevator";
+}
+
 pub enum Adress {
+    ElevatorFront,
+    ElevatorBack,
+    RoofArmRight,
     OmniFR,
     OmniFL,
     OmniBL,
     OmniBR,
-    RoofArmRight,
     RoofArmUd,
     RetainingArmLeft,
     RetainingArmRight,

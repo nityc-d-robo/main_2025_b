@@ -18,9 +18,12 @@ use functions::omni::*;
 use functions::retaining_arm::RetainingArm;
 use functions::roof_arm::RoofArm;
 
+use crate::functions::elevator::Elevator;
+
 struct Mechanisms {
     re_arm: RetainingArm,
     ro_arm: RoofArm,
+    el: Elevator,
 }
 
 const NODE_NAME: &str = "main_2025_b";
@@ -36,6 +39,7 @@ fn main() -> Result<(), DynError> {
     let mechanisms = Mechanisms {
         re_arm: RetainingArm::new(URL, NODE_NAME),
         ro_arm: RoofArm::new(URL, NODE_NAME),
+        el: Elevator::new(URL, NODE_NAME),
     };
 
     selector.add_subscriber(
@@ -78,15 +82,15 @@ fn proseed(msg: TakenMsg<Joy>, prev_buttons: &mut ButtonState, mechanisms: &mut 
     let mut joy = controllers::Gamepad::new(&msg, controllers::DualSenseLayout);
 
     if joy.pressed_circle() {
-        mechanisms.ro_arm.ud_up();
+        mechanisms.el.up();
     }
     if joy.pressed_cross() {
         // mechanisms.re_arm.status.left = -1;
-        mechanisms.ro_arm.ud_down()
+        mechanisms.el.down()
     }
     if !joy.pressed_circle() && !joy.pressed_cross() {
         // mechanisms.re_arm.status.left = 0;
-        mechanisms.ro_arm.ud_stop()
+        mechanisms.el.stop()
     }
 
     if joy.pressed_triangle_edge(prev_buttons) {
@@ -94,5 +98,5 @@ fn proseed(msg: TakenMsg<Joy>, prev_buttons: &mut ButtonState, mechanisms: &mut 
     }
 
     mechanisms.re_arm.update();
-    mechanisms.ro_arm.update();
+    mechanisms.el.update();
 }
