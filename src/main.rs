@@ -1,4 +1,3 @@
-use controllers::ButtonState;
 use motor_lib::{md, GrpcHandle};
 use omni_control::OmniSetting;
 use safe_drive::msg::common_interfaces::geometry_msgs::msg;
@@ -14,11 +13,11 @@ use safe_drive::{
     topic::subscriber::TakenMsg,
 };
 mod functions;
+use crate::functions::elevator::Elevator;
+use controllers::*;
 use functions::omni::*;
 use functions::retaining_arm::RetainingArm;
 use functions::roof_arm::RoofArm;
-
-use crate::functions::elevator::Elevator;
 
 struct Mechanisms {
     re_arm: RetainingArm,
@@ -27,7 +26,7 @@ struct Mechanisms {
 }
 
 const NODE_NAME: &str = "main_2025_b";
-const URL: &str = "http://192.168.0.206:50051";
+const URL: &str = "http://192.168.0.102:50051";
 fn main() -> Result<(), DynError> {
     let _logger = Logger::new(NODE_NAME);
     let ctx = Context::new()?;
@@ -46,8 +45,8 @@ fn main() -> Result<(), DynError> {
         subscriber_joy,
         Box::new({
             let mut mechanisms = mechanisms;
-            let mut prev_buttons: controllers::ButtonState = [false; 13];
-            move |msg: TakenMsg<Joy>| proseed(msg, &mut prev_buttons, &mut mechanisms)
+            let mut controller = controllers::Gamepad::new(controllers::DualSenseLayout);
+            move |msg: TakenMsg<Joy>| proseed(msg, &mut controller, &mut mechanisms)
         }),
     );
 
@@ -77,26 +76,106 @@ fn main() -> Result<(), DynError> {
     }
 }
 
-fn proseed(msg: TakenMsg<Joy>, prev_buttons: &mut ButtonState, mechanisms: &mut Mechanisms) {
+fn proseed(
+    msg: TakenMsg<Joy>,
+    contoller: &mut Gamepad<DualSenseLayout>,
+    mechanisms: &mut Mechanisms,
+) {
     let _logger = Logger::new(NODE_NAME);
-    let mut joy = controllers::Gamepad::new(&msg, controllers::DualSenseLayout);
 
-    if joy.pressed_circle() {
-        mechanisms.el.up();
-    }
-    if joy.pressed_cross() {
-        // mechanisms.re_arm.status.left = -1;
-        mechanisms.el.down()
-    }
-    if !joy.pressed_circle() && !joy.pressed_cross() {
-        // mechanisms.re_arm.status.left = 0;
-        mechanisms.el.stop()
+    //roof
+    {
+        if contoller.pressed_edge(&msg, Button::Square) {
+            mechanisms.ro_arm.right_toggle();
+        }
+
+        if contoller.pressed(&msg, Button::DpadLeft) {
+            if contoller.pressed(&msg, Button::Triangle) {
+                mechanisms.ro_arm.ud_up();
+            }
+            if contoller.pressed(&msg, Button::Cross) {
+                mechanisms.ro_arm.ud_down();
+            }
+        }
+        if !contoller.pressed(&msg, Button::Triangle) && !contoller.pressed(&msg, Button::Cross) {
+            mechanisms.ro_arm.ud_stop();
+        }
     }
 
-    if joy.pressed_triangle_edge(prev_buttons) {
-        mechanisms.ro_arm.right_toggle();
+    // el
+    {
+        if contoller.pressed(&msg, Button::Circle) {
+            if contoller.pressed(&msg, Button::DpadUp) {
+                mechanisms.el.second_up();
+            }
+            if contoller.pressed(&msg, Button::DpadDown) {
+                mechanisms.el.second_down();
+            }
+            if !contoller.pressed(&msg, Button::DpadUp)
+                && !contoller.pressed(&msg, Button::DpadDown)
+            {
+                mechanisms.el.second_stop();
+            }
+        } else {
+            if contoller.pressed(&msg, Button::DpadUp) {
+                mechanisms.el.first_up();
+                mechanisms.el.second_up();
+            }
+            if contoller.pressed(&msg, Button::DpadDown) {
+                mechanisms.el.first_down();
+                mechanisms.el.second_down();
+            }
+            if !contoller.pressed(&msg, Button::DpadUp)
+                && !contoller.pressed(&msg, Button::DpadDown)
+            {
+                mechanisms.el.first_stop();
+                mechanisms.el.second_stop();
+            }
+        }
     }
 
+    // re
+    {
+        {
+            if contoller.pressed(&msg, Button::R2) {
+                mechanisms.re_arm.right_fold();
+            }
+            if contoller.pressed(&msg, Button::R1) {
+                mechanisms.re_arm.right_unfold();
+            }
+            if !contoller.pressed(&msg, Button::R2) && !contoller.pressed(&msg, Button::R1) {
+                mechanisms.re_arm.right_stop();
+            }
+        }
+
+        {
+            if contoller.pressed(&msg, Button::L2) {
+                mechanisms.re_arm.left_fold();
+            }
+            if contoller.pressed(&msg, Button::L1) {
+                mechanisms.re_arm.left_unfold();
+            }
+            if !contoller.pressed(&msg, Button::L2) && !contoller.pressed(&msg, Button::L1) {
+                mechanisms.re_arm.left_stop();
+            }
+        }
+
+        {
+            if contoller.pressed(&msg, Button::DpadRight) {
+                if contoller.pressed(&msg, Button::Triangle) {
+                    mechanisms.re_arm.center_fold();
+                }
+                if contoller.pressed(&msg, Button::Cross) {
+                    mechanisms.re_arm.center_unfold();
+                }
+            }
+            if !contoller.pressed(&msg, Button::Triangle) && !contoller.pressed(&msg, Button::Cross)
+            {
+                mechanisms.re_arm.center_stop();
+            }
+        }
+    }
     mechanisms.re_arm.update();
+    mechanisms.ro_arm.update();
     mechanisms.el.update();
 }

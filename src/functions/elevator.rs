@@ -3,11 +3,15 @@ use motor_lib::{md, GrpcHandle};
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
-    pub mode: isize,
+    first_mode: isize,
+    second_mode: isize,
 }
 impl Status {
     pub fn new() -> Self {
-        Self { mode: 0 }
+        Self {
+            first_mode: 0,
+            second_mode: 0,
+        }
     }
 }
 pub struct Elevator {
@@ -29,28 +33,40 @@ impl Elevator {
         }
     }
 
-    pub fn up(&mut self) {
-        self.status.mode = -1;
+    pub fn first_up(&mut self) {
+        self.status.first_mode = 1;
     }
 
-    pub fn down(&mut self) {
-        self.status.mode = 1;
+    pub fn first_down(&mut self) {
+        self.status.first_mode = -1;
     }
 
-    pub fn stop(&mut self) {
-        self.status.mode = 0;
+    pub fn first_stop(&mut self) {
+        self.status.first_mode = 0;
+    }
+
+    pub fn second_up(&mut self) {
+        self.status.second_mode = 1;
+    }
+
+    pub fn second_down(&mut self) {
+        self.status.second_mode = -1;
+    }
+
+    pub fn second_stop(&mut self) {
+        self.status.second_mode = 0;
     }
 
     pub fn update(&mut self) {
         md::send_pwm(
             &self.handle,
-            Adress::ElevatorFront as u8,
-            (-500 * self.status.mode) as i16,
+            Adress::ElevatorSecond as u8,
+            (-300 * self.status.second_mode) as i16,
         );
         md::send_pwm(
             &self.handle,
-            Adress::ElevatorBack as u8,
-            (500 * self.status.mode) as i16,
+            Adress::ElevatorFirst as u8,
+            (900 * self.status.first_mode) as i16,
         );
     }
 }

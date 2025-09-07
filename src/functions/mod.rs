@@ -28,14 +28,15 @@ impl HasFunctionName for elevator::Elevator {
 }
 
 pub enum Adress {
-    ElevatorFront,
-    ElevatorBack,
-    RoofArmRight,
     OmniFR,
     OmniFL,
     OmniBL,
     OmniBR,
-    RoofArmUd,
+    ElevatorFirst,
+    ElevatorSecond,
+    RoofArmRight = 6,
+    RoofArmUd = 7,
+    RetainingArmRight = 8,
     RetainingArmLeft,
-    RetainingArmRight,
+    RetainingCenter,
 }
