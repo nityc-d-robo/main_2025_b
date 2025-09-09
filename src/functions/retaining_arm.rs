@@ -72,16 +72,19 @@ impl RetainingArm {
     }
 
     pub fn update(&mut self) {
-        pr_info!(self._logger, "{}", self.status.left);
-        md::send_pwm(
+        md::send_limsw(
             &self.handle,
             Adress::RetainingArmLeft as u8,
+            if self.status.left == -1 { 1 } else { 0 },
             (300 * self.status.left) as i16,
+            0,
         );
-        md::send_pwm(
+        md::send_limsw(
             &self.handle,
             Adress::RetainingArmRight as u8,
+            if self.status.right == -1 { 1 } else { 0 },
             (300 * self.status.right) as i16,
+            0,
         );
 
         md::send_pwm(

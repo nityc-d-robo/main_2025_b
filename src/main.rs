@@ -26,7 +26,7 @@ struct Mechanisms {
 }
 
 const NODE_NAME: &str = "main_2025_b";
-const URL: &str = "http://192.168.0.102:50051";
+const URL: &str = "http://192.168.0.101:50051";
 fn main() -> Result<(), DynError> {
     let _logger = Logger::new(NODE_NAME);
     let ctx = Context::new()?;

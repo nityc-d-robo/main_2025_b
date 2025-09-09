@@ -58,15 +58,19 @@ impl Elevator {
     }
 
     pub fn update(&mut self) {
-        md::send_pwm(
+        md::send_limsw(
             &self.handle,
             Adress::ElevatorSecond as u8,
-            (-300 * self.status.second_mode) as i16,
+            if self.status.second_mode == 1 { 1 } else { 0 },
+            (-500 * self.status.second_mode) as i16,
+            0,
         );
-        md::send_pwm(
+        md::send_limsw(
             &self.handle,
             Adress::ElevatorFirst as u8,
+            if self.status.first_mode == 1 { 0 } else { 1 },
             (900 * self.status.first_mode) as i16,
+            0,
         );
     }
 }

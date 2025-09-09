@@ -51,10 +51,12 @@ impl RoofArm {
     }
 
     pub fn update(&mut self) {
-        md::send_pwm(
+        md::send_limsw(
             &self.handle,
             Adress::RoofArmUd as u8,
+            if self.status.ud == 1 { 1 } else { 0 },
             (400 * self.status.ud) as i16,
+            0,
         );
 
         md::send_pwm(
