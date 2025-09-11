@@ -137,44 +137,50 @@ fn proseed(
     // re
     {
         {
-            if contoller.pressed(&msg, Button::R2) {
-                mechanisms.re_arm.right_fold();
+            if contoller.pressed(&msg, Button::Circle) {
+                if contoller.pressed(&msg, Button::R1) {
+                    mechanisms.re_arm.right_fold();
+                }
+            } else {
+                if contoller.pressed(&msg, Button::R1) {
+                    mechanisms.re_arm.right_unfold();
+                }
             }
-            if contoller.pressed(&msg, Button::R1) {
-                mechanisms.re_arm.right_unfold();
-            }
-            if !contoller.pressed(&msg, Button::R2) && !contoller.pressed(&msg, Button::R1) {
+            if !contoller.pressed(&msg, Button::R1) {
                 mechanisms.re_arm.right_stop();
             }
         }
 
         {
-            if contoller.pressed(&msg, Button::L2) {
-                mechanisms.re_arm.left_fold();
+            if contoller.pressed(&msg, Button::Circle) {
+                if contoller.pressed(&msg, Button::L1) {
+                    mechanisms.re_arm.left_fold();
+                }
+            } else {
+                if contoller.pressed(&msg, Button::L1) {
+                    mechanisms.re_arm.left_unfold();
+                }
             }
-            if contoller.pressed(&msg, Button::L1) {
-                mechanisms.re_arm.left_unfold();
-            }
-            if !contoller.pressed(&msg, Button::L2) && !contoller.pressed(&msg, Button::L1) {
+            if !contoller.pressed(&msg, Button::L1) {
                 mechanisms.re_arm.left_stop();
             }
         }
+    }
 
-        {
-            if contoller.pressed(&msg, Button::DpadRight) {
-                if contoller.pressed(&msg, Button::Triangle) {
-                    mechanisms.re_arm.center_fold();
-                }
-                if contoller.pressed(&msg, Button::Cross) {
-                    mechanisms.re_arm.center_unfold();
-                }
+    {
+        if contoller.pressed(&msg, Button::DpadRight) {
+            if contoller.pressed(&msg, Button::Triangle) {
+                mechanisms.re_arm.center_fold();
             }
-            if !contoller.pressed(&msg, Button::Triangle) && !contoller.pressed(&msg, Button::Cross)
-            {
-                mechanisms.re_arm.center_stop();
+            if contoller.pressed(&msg, Button::Cross) {
+                mechanisms.re_arm.center_unfold();
             }
         }
+        if !contoller.pressed(&msg, Button::Triangle) && !contoller.pressed(&msg, Button::Cross) {
+            mechanisms.re_arm.center_stop();
+        }
     }
+
     mechanisms.re_arm.update();
     mechanisms.ro_arm.update();
     mechanisms.el.update();
