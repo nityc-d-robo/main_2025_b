@@ -1,7 +1,6 @@
-use motor_lib::{md, GrpcHandle};
+use motor_lib::{md, sd::mode::POWER, GrpcHandle};
 use omni_control::OmniSetting;
 use safe_drive::msg::common_interfaces::geometry_msgs::msg;
-
 #[allow(unused_imports)]
 use safe_drive::{
     context::Context,
@@ -13,7 +12,7 @@ use safe_drive::{
     topic::subscriber::TakenMsg,
 };
 mod functions;
-use crate::functions::elevator::Elevator;
+use crate::functions::{ei::Ei, elevator::Elevator, Adress};
 use controllers::*;
 use functions::omni::*;
 use functions::retaining_arm::RetainingArm;
@@ -25,6 +24,10 @@ struct Mechanisms {
     el: Elevator,
 }
 
+struct MechanismsEi {
+    ei: Ei,
+}
+
 const NODE_NAME: &str = "main_2025_b";
 const URL: &str = "http://192.168.0.101:50051";
 fn main() -> Result<(), DynError> {
@@ -33,12 +36,19 @@ fn main() -> Result<(), DynError> {
     let mut selector = ctx.create_selector()?;
     let node = ctx.create_node(NODE_NAME, None, Default::default())?;
     let subscriber_joy = node.create_subscriber::<sensor_msgs::msg::Joy>("joy", None)?;
-    let subscriber_cmd = node.create_subscriber::<msg::Twist>("cmd_vel", None)?;
+    let subscriber_joy_ei = node.create_subscriber::<sensor_msgs::msg::Joy>("_joy", None)?;
+
+    let subscriber_cmd = node.create_subscriber::<msg::Twist>("_cmd_vel", None)?;
+    let subscriber_cmd_ei = node.create_subscriber::<msg::Twist>("cmd_vel", None)?;
 
     let mechanisms = Mechanisms {
         re_arm: RetainingArm::new(URL, NODE_NAME),
         ro_arm: RoofArm::new(URL, NODE_NAME),
         el: Elevator::new(URL, NODE_NAME),
+    };
+
+    let mechanisms_ei = MechanismsEi {
+        ei: Ei::new(URL, NODE_NAME),
     };
 
     selector.add_subscriber(
@@ -68,6 +78,35 @@ fn main() -> Result<(), DynError> {
                     -motor_power[i] as i16,
                 );
             }
+        }),
+    );
+
+    selector.add_subscriber(
+        subscriber_joy_ei,
+        Box::new({
+            let mut mechanisms_ei = mechanisms_ei;
+            let mut controller = controllers::Gamepad::new(controllers::DualSenseLayout);
+            move |msg: TakenMsg<Joy>| proseed_ei(msg, &mut controller, &mut mechanisms_ei)
+        }),
+    );
+
+    selector.add_subscriber(
+        subscriber_cmd_ei,
+        Box::new(move |msg| {
+            md::send_pwm(
+                &GrpcHandle::new(URL.as_ref()),
+                Adress::EiFin as u8,
+                (MAX_PAWER_OUTPUT * (msg.angular.z / MAX_REVOLUTION)) as i16,
+            );
+
+            let power = (msg.linear.x.powf(2.0) + msg.linear.y.powf(2.0)).sqrt()
+                * if msg.linear.y > 0. { 1. } else { -1. };
+
+            md::send_pwm(
+                &GrpcHandle::new(URL.as_ref()),
+                Adress::EiTail as u8,
+                (MAX_PAWER_OUTPUT * (power / MAX_PAWER_INPUT)) as i16,
+            );
         }),
     );
 
@@ -184,4 +223,28 @@ fn proseed(
     mechanisms.re_arm.update();
     mechanisms.ro_arm.update();
     mechanisms.el.update();
+}
+
+fn proseed_ei(
+    msg: TakenMsg<Joy>,
+    contoller: &mut Gamepad<DualSenseLayout>,
+    mechanisms: &mut MechanismsEi,
+) {
+    let _logger = Logger::new(NODE_NAME);
+
+    if contoller.pressed_edge(&msg, Button::Square) {
+        mechanisms.ei.roller_toggle();
+    }
+
+    if contoller.pressed(&msg, Button::DpadUp) {
+        mechanisms.ei.flag_fold();
+    }
+    if contoller.pressed(&msg, Button::DpadDown) {
+        mechanisms.ei.flag_unfold();
+    }
+    if !contoller.pressed(&msg, Button::DpadUp) && !contoller.pressed(&msg, Button::DpadDown) {
+        mechanisms.ei.flag_stop();
+    }
+
+    mechanisms.ei.update();
 }

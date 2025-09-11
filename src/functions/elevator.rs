@@ -69,7 +69,7 @@ impl Elevator {
             &self.handle,
             Adress::ElevatorFirst as u8,
             if self.status.first_mode == 1 { 0 } else { 1 },
-            (900 * self.status.first_mode) as i16,
+            (500 * self.status.first_mode) as i16,
             0,
         );
     }
