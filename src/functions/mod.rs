@@ -54,6 +54,7 @@ pub enum MdAdress {
 
 pub enum SmdAdress {
     EiRollerUd = 0,
+    Roof,
 }
 
 pub enum SdAdress {

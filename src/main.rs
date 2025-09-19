@@ -153,21 +153,19 @@ fn proseed(
 
     //re
     {
-        if contoller.pressed(&msg, Button::L1) && contoller.pressed(&msg, Button::R1) {
+        if contoller.pressed(&msg, Button::L2) && contoller.pressed(&msg, Button::R2) {
             {
                 if contoller.pressed(&msg, Button::DpadLeft) {
                     mechanisms.re_arm.left_unfold();
-                    pr_info!(_logger, "left_unfold");
+                    pr_info!(_logger, "left unfold");
                 }
                 if contoller.pressed(&msg, Button::DpadRight) {
                     mechanisms.re_arm.left_fold();
-                    pr_info!(_logger, "left_fold");
                 }
                 if !contoller.pressed(&msg, Button::DpadLeft)
                     && !contoller.pressed(&msg, Button::DpadRight)
                 {
                     mechanisms.re_arm.left_stop();
-                    pr_info!(_logger, "left_stop");
                 }
             }
 
@@ -184,8 +182,22 @@ fn proseed(
                     mechanisms.re_arm.right_stop();
                 }
             }
+
+            {
+                if contoller.pressed(&msg, Button::DpadUp) {
+                    mechanisms.re_arm.center_unfold();
+                }
+                if contoller.pressed(&msg, Button::DpadDown) {
+                    mechanisms.re_arm.center_fold();
+                }
+                if !contoller.pressed(&msg, Button::DpadUp)
+                    && !contoller.pressed(&msg, Button::DpadDown)
+                {
+                    mechanisms.re_arm.center_stop();
+                }
+            }
         }
-        if !contoller.pressed(&msg, Button::R1) && !contoller.pressed(&msg, Button::L1) {
+        if !contoller.pressed(&msg, Button::R2) && !contoller.pressed(&msg, Button::L2) {
             {
                 mechanisms.re_arm.left_stop();
                 mechanisms.re_arm.right_stop();
@@ -222,22 +234,24 @@ fn proseed(
                     mechanisms.ei.fin_stop();
                 }
             }
+
+            {
+                if contoller.pressed(&msg, Button::DpadLeft) {
+                    mechanisms.ei.ud_up();
+                    pr_info!(_logger, "ei ud up");
+                }
+                if contoller.pressed(&msg, Button::DpadRight) {
+                    mechanisms.ei.ud_down();
+                }
+                if !contoller.pressed(&msg, Button::DpadLeft)
+                    && !contoller.pressed(&msg, Button::DpadRight)
+                {
+                    mechanisms.ei.ud_stop();
+                }
+            }
         }
         if !contoller.pressed(&msg, Button::R1) {
             mechanisms.ei.fin_stop();
-        }
-
-        if contoller.pressed(&msg, Button::L1) {
-            mechanisms.ei.ud_up();
-            pr_info!(_logger, "ei ud up");
-        }
-        if contoller.pressed(&msg, Button::L1) && contoller.pressed(&msg, Button::Triangle) {
-            mechanisms.ei.ud_down();
-            pr_info!(_logger, "ei ud down");
-        }
-        if !contoller.pressed(&msg, Button::L1) {
-            mechanisms.ei.ud_stop();
-            pr_info!(_logger, "ei ud stop");
         }
 
         if contoller.pressed(&msg, Button::R1) && contoller.pressed_edge(&msg, Button::Cross) {

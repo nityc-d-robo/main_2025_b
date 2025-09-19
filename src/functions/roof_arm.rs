@@ -1,11 +1,12 @@
 use super::*;
-use motor_lib::{md, sd, GrpcHandle};
+use motor_lib::{md, sd, smd, GrpcHandle};
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
     ud: isize, // 正転　1 停止　0 反転　-1
     right: isize,
     bq: isize,
+    roof: f64,
 }
 impl Status {
     pub fn new() -> Self {
@@ -13,6 +14,7 @@ impl Status {
             ud: 0,
             right: 0,
             bq: 0,
+            roof: 0.0,
         }
     }
 }
@@ -33,6 +35,15 @@ impl RoofArm {
             handle: GrpcHandle::new(url.as_ref()),
             _logger: Self::logger_new(node_name),
         }
+    }
+
+    //
+    pub fn roof_ud_right(&mut self, dx: f64) {
+        self.status.roof += dx.max(0.);
+    }
+
+    pub fn roller_ud_left(&mut self, dx: f64) {
+        self.status.roof -= dx.max(0.);
     }
 
     // ud
@@ -86,6 +97,12 @@ impl RoofArm {
         //     SdAdress::EiBq as u8,
         //     0,
         //     self.status.bq as i16 * 999,
+        // );
+        // let _ = smd::send_angle(
+        //     &self.handle,
+        //     SmdAdress::Roof as u8,
+        //     0,
+        //     self.status.roof.min(360.).max(0.) as i16,
         // );
     }
 }

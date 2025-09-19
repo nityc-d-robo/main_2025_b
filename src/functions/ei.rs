@@ -76,7 +76,7 @@ impl Ei {
     }
 
     pub fn roller_ud_down(&mut self, dx: f64) {
-        self.status.roller_ud += dx.max(0.);
+        self.status.roller_ud -= dx.max(0.);
     }
 
     pub fn update(&mut self) {
