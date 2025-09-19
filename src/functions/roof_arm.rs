@@ -1,14 +1,19 @@
 use super::*;
-use motor_lib::{md, GrpcHandle};
+use motor_lib::{md, sd, GrpcHandle};
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
     ud: isize, // 正転　1 停止　0 反転　-1
     right: isize,
+    bq: isize,
 }
 impl Status {
     pub fn new() -> Self {
-        Self { ud: 0, right: 0 }
+        Self {
+            ud: 0,
+            right: 0,
+            bq: 0,
+        }
     }
 }
 pub struct RoofArm {
@@ -50,10 +55,21 @@ impl RoofArm {
         self.status.right = (self.status.right + 1) % 2;
     }
 
+    pub fn bq_toggle(&mut self) {
+        self.status.bq = (self.status.bq + 1) % 2;
+    }
+
+    pub fn right_start(&mut self) {
+        self.status.right = 1;
+    }
+    pub fn right_stop(&mut self) {
+        self.status.right = 0;
+    }
+
     pub fn update(&mut self) {
         md::send_limsw(
             &self.handle,
-            Adress::RoofArmUd as u8,
+            MdAdress::RoofArmUd as u8,
             if self.status.ud == 1 { 1 } else { 0 },
             (400 * self.status.ud) as i16,
             0,
@@ -61,8 +77,15 @@ impl RoofArm {
 
         md::send_pwm(
             &self.handle,
-            Adress::RoofArmRight as u8,
+            MdAdress::RoofArmRight as u8,
             (-800 * self.status.right) as i16,
         );
+
+        // let _ = sd::send_power(
+        //     &self.handle,
+        //     SdAdress::EiBq as u8,
+        //     0,
+        //     self.status.bq as i16 * 999,
+        // );
     }
 }

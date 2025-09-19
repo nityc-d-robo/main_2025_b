@@ -31,21 +31,32 @@ impl HasFunctionName for elevator::Elevator {
 impl HasFunctionName for ei::Ei {
     const FUNCTION_NAME: &'static str = "ei";
 }
+impl HasFunctionName for omni::Omni {
+    const FUNCTION_NAME: &'static str = "omni";
+}
 
-pub enum Adress {
+pub enum MdAdress {
     OmniFR = 0,
     OmniBL = 1,
     OmniFL = 2,
     OmniBR = 3,
     ElevatorFirst = 4,
-    EiTail,
+    EiUd,
     ElevatorSecond = 6,
-    RetainingArmRight = 7,
+    RetainingArmRight = 11,
     RetainingArmLeft = 8,
     RetainingCenter = 9,
-    RoofArmRight = 11,
+    RoofArmRight = 7,
     RoofArmUd = 12,
     EiRoller,
-    EiFlag,
     EiFin,
+}
+
+pub enum SmdAdress {
+    EiRollerUd = 0,
+}
+
+pub enum SdAdress {
+    HeadBq = 0,
+    EiBq = 1,
 }

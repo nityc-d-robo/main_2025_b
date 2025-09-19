@@ -1,14 +1,23 @@
 use super::*;
-use motor_lib::{md, GrpcHandle};
+use motor_lib::{md, sd, smd, GrpcHandle};
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
     roller: isize,
-    flag: isize,
+    roller_ud: f64,
+    fin: isize,
+    ud: isize,
+    bq: isize,
 }
 impl Status {
     pub fn new() -> Self {
-        Self { roller: 0, flag: 0 }
+        Self {
+            roller: 0,
+            roller_ud: 0.0,
+            fin: 0,
+            ud: 0,
+            bq: 0,
+        }
     }
 }
 pub struct Ei {
@@ -30,32 +39,78 @@ impl Ei {
         }
     }
 
+    pub fn bq_toggle(&mut self) {
+        self.status.bq = (self.status.bq + 1) % 2;
+    }
+
     pub fn roller_toggle(&mut self) {
         self.status.roller = (self.status.roller + 1) % 2;
     }
 
-    pub fn flag_fold(&mut self) {
-        self.status.flag = 1;
+    pub fn ud_up(&mut self) {
+        self.status.ud = 1;
     }
 
-    pub fn flag_unfold(&mut self) {
-        self.status.flag = -1;
+    pub fn ud_down(&mut self) {
+        self.status.ud = -1;
     }
 
-    pub fn flag_stop(&mut self) {
-        self.status.flag = 0;
+    pub fn ud_stop(&mut self) {
+        self.status.ud = 0;
+    }
+
+    pub fn fin_unfold(&mut self) {
+        self.status.fin = 1;
+    }
+
+    pub fn fin_fold(&mut self) {
+        self.status.fin = -1;
+    }
+
+    pub fn fin_stop(&mut self) {
+        self.status.fin = 0;
+    }
+
+    pub fn roller_ud_up(&mut self, dx: f64) {
+        self.status.roller_ud += dx.max(0.);
+    }
+
+    pub fn roller_ud_down(&mut self, dx: f64) {
+        self.status.roller_ud += dx.max(0.);
     }
 
     pub fn update(&mut self) {
         md::send_pwm(
             &self.handle,
-            Adress::EiRoller as u8,
-            (-800 * self.status.roller) as i16,
+            MdAdress::EiRoller as u8,
+            (800 * self.status.roller) as i16,
         );
         md::send_pwm(
             &self.handle,
-            Adress::EiFlag as u8,
-            (400 * self.status.flag) as i16,
+            MdAdress::EiFin as u8,
+            (400 * self.status.fin) as i16,
         );
+
+        md::send_limsw(
+            &self.handle,
+            MdAdress::EiUd as u8,
+            if self.status.ud == 1 { 0 } else { 1 },
+            (-500 * self.status.ud) as i16,
+            0,
+        );
+
+        // let _ = smd::send_angle(
+        //     &self.handle,
+        //     SmdAdress::EiRollerUd as u8,
+        //     0,
+        //     self.status.roller_ud.min(360.) as i16,
+        // );
+
+        // let _ = sd::send_power(
+        //     &self.handle,
+        //     SdAdress::EiBq as u8,
+        //     0,
+        //     self.status.bq as i16 * 999,
+        // );
     }
 }

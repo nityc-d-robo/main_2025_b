@@ -5,12 +5,16 @@ use safe_drive::{logger::Logger, pr_info};
 pub struct Status {
     first_mode: isize,
     second_mode: isize,
+    pub prev_first: i16,
+    pub prev_second: i16,
 }
 impl Status {
     pub fn new() -> Self {
         Self {
             first_mode: 0,
             second_mode: 0,
+            prev_first: 0,
+            prev_second: 0,
         }
     }
 }
@@ -60,14 +64,14 @@ impl Elevator {
     pub fn update(&mut self) {
         md::send_limsw(
             &self.handle,
-            Adress::ElevatorSecond as u8,
+            MdAdress::ElevatorSecond as u8,
             if self.status.second_mode == 1 { 1 } else { 0 },
             (-500 * self.status.second_mode) as i16,
             0,
         );
         md::send_limsw(
             &self.handle,
-            Adress::ElevatorFirst as u8,
+            MdAdress::ElevatorFirst as u8,
             if self.status.first_mode == 1 { 0 } else { 1 },
             (500 * self.status.first_mode) as i16,
             0,

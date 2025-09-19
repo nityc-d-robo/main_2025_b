@@ -74,22 +74,22 @@ impl RetainingArm {
     pub fn update(&mut self) {
         md::send_limsw(
             &self.handle,
-            Adress::RetainingArmLeft as u8,
+            MdAdress::RetainingArmLeft as u8,
             if self.status.left == -1 { 1 } else { 0 },
-            (300 * self.status.left) as i16,
+            (600 * self.status.left) as i16,
             0,
         );
         md::send_limsw(
             &self.handle,
-            Adress::RetainingArmRight as u8,
-            if self.status.right == -1 { 1 } else { 0 },
-            (300 * self.status.right) as i16,
+            MdAdress::RetainingArmRight as u8,
+            if self.status.right == -1 { 0 } else { 1 },
+            (600 * self.status.right) as i16,
             0,
         );
 
         md::send_pwm(
             &self.handle,
-            Adress::RetainingCenter as u8,
+            MdAdress::RetainingCenter as u8,
             (600 * self.status.center) as i16,
         );
     }

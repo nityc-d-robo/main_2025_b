@@ -1,23 +1,85 @@
-use super::Adress;
-use omni_control::{Chassis, Tire};
-pub const CHASSIS: Chassis = Chassis {
-    fl: Tire {
-        id: Adress::OmniFL as usize,
-        raito: 1.,
-    },
-    fr: Tire {
-        id: Adress::OmniFR as usize,
-        raito: 1.,
-    },
-    br: Tire {
-        id: Adress::OmniBR as usize,
-        raito: 1.,
-    },
-    bl: Tire {
-        id: Adress::OmniBL as usize,
-        raito: 1.,
-    },
-};
+use std::collections::HashMap;
+
+use super::MdAdress;
+use super::*;
+use motor_lib::{md, GrpcHandle};
+use omni_control::{Chassis, OmniSetting, Tire};
+use safe_drive::{logger::Logger, pr_info};
+
+pub struct Status {
+    direction: isize, // 正転　-1 停止　0 反転　1 回路が悪い
+    omni_setting: OmniSetting,
+}
+impl Status {
+    pub fn new() -> Self {
+        Self {
+            direction: -1,
+            omni_setting: OmniSetting {
+                chassis: Chassis {
+                    fl: Tire {
+                        id: MdAdress::OmniFL as usize,
+                        raito: 1.,
+                    },
+                    fr: Tire {
+                        id: MdAdress::OmniFR as usize,
+                        raito: 1.,
+                    },
+                    br: Tire {
+                        id: MdAdress::OmniBR as usize,
+                        raito: 1.,
+                    },
+                    bl: Tire {
+                        id: MdAdress::OmniBL as usize,
+                        raito: 1.,
+                    },
+                },
+                max_pawer_input: MAX_PAWER_INPUT,
+                max_pawer_output: MAX_PAWER_OUTPUT,
+                max_revolution: MAX_REVOLUTION,
+            },
+        }
+    }
+}
+pub struct Omni {
+    pub status: Status,
+    handle: GrpcHandle,
+    _logger: Logger,
+}
+
+impl Omni {
+    pub fn new<U, N>(url: U, node_name: N) -> Self
+    where
+        U: AsRef<str>,
+        N: AsRef<str>,
+    {
+        Self {
+            status: Status::new(),
+            handle: GrpcHandle::new(url.as_ref()),
+            _logger: Self::logger_new(node_name),
+        }
+    }
+
+    pub fn omni_setting(&mut self) -> &mut OmniSetting {
+        &mut self.status.omni_setting
+    }
+
+    pub fn reverse_direction(&mut self) {
+        self.status.direction *= -1;
+    }
+    pub fn reset_direction(&mut self) {
+        self.status.direction = -1;
+    }
+
+    pub fn update(&self, powers: &HashMap<usize, f64>) {
+        for i in powers.keys() {
+            md::send_pwm(
+                &self.handle,
+                *i as u8,
+                powers[i] as i16 * self.status.direction as i16,
+            );
+        }
+    }
+}
 
 pub const MAX_PAWER_INPUT: f64 = 160.;
 pub const MAX_PAWER_OUTPUT: f64 = 1000.;
