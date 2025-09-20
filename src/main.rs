@@ -1,6 +1,3 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
-mod con;
-use motor_lib::{md, GrpcHandle};
 use safe_drive::msg::common_interfaces::geometry_msgs::msg;
 #[allow(unused_imports)]
 use safe_drive::{
@@ -12,8 +9,9 @@ use safe_drive::{
     topic::publisher::Publisher,
     topic::subscriber::TakenMsg,
 };
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 mod functions;
-use crate::functions::{ei::Ei, elevator::Elevator, MdAdress};
+use crate::functions::{ei::Ei, elevator::Elevator};
 use controllers::*;
 use functions::omni::*;
 use functions::retaining_arm::RetainingArm;
