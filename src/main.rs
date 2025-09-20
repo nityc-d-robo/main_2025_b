@@ -126,7 +126,14 @@ fn proseed(
             mechanisms.el.first_up();
             mechanisms.el.second_up();
         }
-        if contoller.pressed(&msg, Button::DpadDown) {
+        if contoller.pressed(&msg, Button::DpadDown)
+            && !contoller.pressed(&msg, Button::L1)
+            && !contoller.pressed(&msg, Button::R1)
+            && !contoller.pressed(&msg, Button::Square)
+            && !contoller.pressed(&msg, Button::DpadLeft)
+            && !contoller.pressed(&msg, Button::L2)
+            && !contoller.pressed(&msg, Button::R2)
+        {
             mechanisms.el.first_down();
             mechanisms.el.second_down();
         }
