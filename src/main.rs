@@ -1,5 +1,5 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
-
+mod con;
 use motor_lib::{md, GrpcHandle};
 use safe_drive::msg::common_interfaces::geometry_msgs::msg;
 #[allow(unused_imports)]
@@ -24,10 +24,6 @@ struct Mechanisms {
     ro_arm: RoofArm,
     el: Elevator,
     omni: Omni,
-    ei: Ei,
-}
-
-struct MechanismsEi {
     ei: Ei,
 }
 
@@ -204,7 +200,7 @@ fn proseed(
                 }
             }
         }
-        if !contoller.pressed(&msg, Button::R2) && !contoller.pressed(&msg, Button::L2) {
+        if !contoller.pressed(&msg, Button::R2) || !contoller.pressed(&msg, Button::L2) {
             {
                 mechanisms.re_arm.left_stop();
                 mechanisms.re_arm.right_stop();
