@@ -11,7 +11,10 @@ use safe_drive::{
 };
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 mod functions;
-use crate::functions::{ei::Ei, elevator::Elevator};
+use crate::functions::{
+    ei::{self, Ei},
+    elevator::Elevator,
+};
 use controllers::*;
 use functions::omni::*;
 use functions::retaining_arm::RetainingArm;
@@ -86,177 +89,192 @@ fn proseed(
     contoller: &mut Gamepad<DualShock4Layout>,
     _mechanisms: Rc<RefCell<Mechanisms>>,
 ) {
+    use controllers::combination::ButtonCombination as BC;
+    use controllers::combination::State::*;
+    use controllers::Button::*;
+
     let mechanisms = &mut *_mechanisms.borrow_mut();
     let _logger = Logger::new(NODE_NAME);
 
     //roof
     {
-        if contoller.pressed(&msg, Button::L1)
-            && contoller.pressed_edge(&msg, Button::Circle)
-            && !contoller.pressed(&msg, Button::R1)
+        if BC::new()
+            .add(L1.state(Pressed))
+            .add(Circle.state(PressedEdge))
+            .evalute(contoller, &msg)
         {
             mechanisms.ro_arm.right_toggle();
         }
 
-        if contoller.pressed(&msg, Button::L1) && contoller.pressed(&msg, Button::DpadUp) {
+        if BC::new()
+            .add(L1.state(Pressed))
+            .add(DpadUp.state(Pressed))
+            .evalute(contoller, &msg)
+        {
             mechanisms.ro_arm.ud_up();
-        }
-        if contoller.pressed(&msg, Button::L1) && contoller.pressed(&msg, Button::DpadDown) {
+        } else if BC::new()
+            .add(L1.state(Pressed))
+            .add(DpadDown.state(Pressed))
+            .evalute(contoller, &msg)
+        {
             mechanisms.ro_arm.ud_down();
-        }
-
-        if !contoller.pressed(&msg, Button::DpadUp) && !contoller.pressed(&msg, Button::DpadDown) {
+        } else {
             mechanisms.ro_arm.ud_stop();
         }
 
-        if contoller.pressed(&msg, Button::L1) && contoller.pressed_edge(&msg, Button::Cross) {
+        if BC::new()
+            .add(L1.state(Pressed))
+            .add(Cross.state(PressedEdge))
+            .evalute(contoller, &msg)
+        {
             mechanisms.ro_arm.bq_toggle();
         }
     }
 
     // el
     {
-        if contoller.pressed(&msg, Button::Cross) && !contoller.pressed(&msg, Button::Circle) {
+        if BC::new().add(Cross.state(Pressed)).evalute(contoller, &msg) {
             mechanisms.el.first_up();
             mechanisms.el.second_up();
-        }
-        if contoller.pressed(&msg, Button::DpadDown)
-            && !contoller.pressed(&msg, Button::L1)
-            && !contoller.pressed(&msg, Button::R1)
-            && !contoller.pressed(&msg, Button::Square)
-            && !contoller.pressed(&msg, Button::DpadLeft)
-            && !contoller.pressed(&msg, Button::L2)
-            && !contoller.pressed(&msg, Button::R2)
+        } else if BC::new()
+            .add(DpadDown.state(Pressed))
+            .evalute(contoller, &msg)
         {
             mechanisms.el.first_down();
             mechanisms.el.second_down();
-        }
-
-        if !contoller.pressed(&msg, Button::Cross) && !contoller.pressed(&msg, Button::DpadDown) {
+        } else {
             mechanisms.el.first_stop();
             mechanisms.el.second_stop();
         }
 
-        if contoller.pressed(&msg, Button::Cross) && contoller.pressed(&msg, Button::Circle) {
-            mechanisms.el.second_up();
-        }
-        if contoller.pressed(&msg, Button::DpadLeft) && contoller.pressed(&msg, Button::DpadDown) {
-            mechanisms.el.second_down();
-        }
-
-        if !contoller.pressed(&msg, Button::Cross)
-            && !contoller.pressed(&msg, Button::DpadLeft)
-            && !contoller.pressed(&msg, Button::DpadDown)
+        if BC::new()
+            .add(Cross.state(Pressed))
+            .add(Circle.state(Pressed))
+            .evalute(contoller, &msg)
         {
+            mechanisms.el.second_up();
+        } else if BC::new()
+            .add(DpadLeft.state(Pressed))
+            .add(DpadDown.state(Pressed))
+            .evalute(contoller, &msg)
+        {
+            mechanisms.el.second_down();
+        } else {
             mechanisms.el.second_stop();
         }
     }
 
     //re
     {
-        if contoller.pressed(&msg, Button::L2) && contoller.pressed(&msg, Button::R2) {
+        let re_mode = BC::new().add(L2.state(Pressed)).add(R2.state(Pressed));
+        let allow_re_mode = vec![DpadLeft, DpadRight, Circle, Square, DpadUp, DpadDown];
+        if re_mode.ignores(&allow_re_mode).evalute(contoller, &msg) {
             {
-                if contoller.pressed(&msg, Button::DpadLeft) {
-                    mechanisms.re_arm.left_unfold();
-                    pr_info!(_logger, "left unfold");
-                }
-                if contoller.pressed(&msg, Button::DpadRight) {
-                    mechanisms.re_arm.left_fold();
-                }
-                if !contoller.pressed(&msg, Button::DpadLeft)
-                    && !contoller.pressed(&msg, Button::DpadRight)
+                if re_mode
+                    .add(DpadLeft.state(Pressed))
+                    .evalute(contoller, &msg)
                 {
+                    mechanisms.re_arm.left_unfold();
+                } else if re_mode
+                    .add(DpadRight.state(Pressed))
+                    .evalute(contoller, &msg)
+                {
+                    mechanisms.re_arm.left_fold();
+                } else {
                     mechanisms.re_arm.left_stop();
                 }
             }
 
             {
-                if contoller.pressed(&msg, Button::Circle) {
+                if re_mode.add(Circle.state(Pressed)).evalute(contoller, &msg) {
                     mechanisms.re_arm.right_unfold();
-                }
-                if contoller.pressed(&msg, Button::Square) {
+                } else if re_mode.add(Square.state(Pressed)).evalute(contoller, &msg) {
                     mechanisms.re_arm.right_fold();
-                }
-                if !contoller.pressed(&msg, Button::Circle)
-                    && !contoller.pressed(&msg, Button::Square)
-                {
+                } else {
                     mechanisms.re_arm.right_stop();
                 }
             }
 
             {
-                if contoller.pressed(&msg, Button::DpadUp) {
+                if re_mode.add(DpadUp.state(Pressed)).evalute(contoller, &msg) {
                     mechanisms.re_arm.center_unfold();
-                }
-                if contoller.pressed(&msg, Button::DpadDown) {
-                    mechanisms.re_arm.center_fold();
-                }
-                if !contoller.pressed(&msg, Button::DpadUp)
-                    && !contoller.pressed(&msg, Button::DpadDown)
+                } else if re_mode
+                    .add(DpadDown.state(Pressed))
+                    .evalute(contoller, &msg)
                 {
+                    mechanisms.re_arm.center_fold();
+                } else {
                     mechanisms.re_arm.center_stop();
                 }
             }
-        }
-        if !contoller.pressed(&msg, Button::R2) || !contoller.pressed(&msg, Button::L2) {
-            {
-                mechanisms.re_arm.left_stop();
-                mechanisms.re_arm.right_stop();
-            }
+        } else {
+            mechanisms.re_arm.left_stop();
+            mechanisms.re_arm.right_stop();
         }
     }
     //ei
 
     {
-        if contoller.pressed(&msg, Button::R1) {
+        let ei_mode = BC::new().add(R1.state(Pressed));
+        let allow_ei_mode = vec![
+            DpadLeft, DpadRight, Circle, Square, Triangle, DpadUp, DpadDown, Cross,
+        ];
+        if ei_mode.ignores(&allow_ei_mode).evalute(contoller, &msg) {
             {
-                if contoller.pressed(&msg, Button::DpadUp) {
+                if ei_mode.add(DpadUp.state(Pressed)).evalute(contoller, &msg) {
                     mechanisms.ei.roller_ud_up(5.0);
                 }
-                if contoller.pressed(&msg, Button::DpadDown) {
+                if ei_mode.add(DpadUp.state(Pressed)).evalute(contoller, &msg) {
                     mechanisms.ei.roller_ud_down(5.0);
                 }
             }
 
-            if contoller.pressed_edge(&msg, Button::Circle) {
+            if ei_mode
+                .add(Circle.state(PressedEdge))
+                .evalute(contoller, &msg)
+            {
                 mechanisms.ei.roller_toggle();
             }
 
             {
-                if contoller.pressed(&msg, Button::Square) {
+                if ei_mode.add(Square.state(Pressed)).evalute(contoller, &msg) {
                     mechanisms.ei.fin_unfold();
-                }
-                if contoller.pressed(&msg, Button::Triangle) {
-                    mechanisms.ei.fin_fold();
-                }
-                if !contoller.pressed(&msg, Button::Square)
-                    && !contoller.pressed(&msg, Button::Triangle)
+                } else if ei_mode
+                    .add(Triangle.state(Pressed))
+                    .evalute(contoller, &msg)
                 {
+                    mechanisms.ei.fin_fold();
+                } else {
                     mechanisms.ei.fin_stop();
                 }
             }
 
             {
-                if contoller.pressed(&msg, Button::DpadLeft) {
+                if ei_mode
+                    .add(DpadLeft.state(Pressed))
+                    .evalute(contoller, &msg)
+                {
                     mechanisms.ei.ud_up();
                     pr_info!(_logger, "ei ud up");
-                }
-                if contoller.pressed(&msg, Button::DpadRight) {
-                    mechanisms.ei.ud_down();
-                }
-                if !contoller.pressed(&msg, Button::DpadLeft)
-                    && !contoller.pressed(&msg, Button::DpadRight)
+                } else if ei_mode
+                    .add(DpadRight.state(Pressed))
+                    .evalute(contoller, &msg)
                 {
+                    mechanisms.ei.ud_down();
+                } else {
                     mechanisms.ei.ud_stop();
                 }
             }
-        }
-        if !contoller.pressed(&msg, Button::R1) {
-            mechanisms.ei.fin_stop();
-        }
 
-        if contoller.pressed(&msg, Button::R1) && contoller.pressed_edge(&msg, Button::Cross) {
-            mechanisms.ei.bq_toggle();
+            if ei_mode
+                .add(Cross.state(PressedEdge))
+                .evalute(contoller, &msg)
+            {
+                mechanisms.ei.bq_toggle();
+            }
+        } else {
+            mechanisms.ei.fin_stop();
+            mechanisms.ei.ud_stop();
         }
     }
 
