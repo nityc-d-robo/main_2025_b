@@ -9,6 +9,7 @@ use safe_drive::{logger::Logger, pr_info};
 pub struct Status {
     direction: isize, // 正転　-1 停止　0 反転　1 回路が悪い
     omni_setting: OmniSetting,
+    alpha: f64,
 }
 impl Status {
     pub fn new() -> Self {
@@ -37,6 +38,7 @@ impl Status {
                 max_pawer_output: MAX_PAWER_OUTPUT,
                 max_revolution: MAX_REVOLUTION,
             },
+            alpha: 1.0,
         }
     }
 }
@@ -63,11 +65,31 @@ impl Omni {
         &mut self.status.omni_setting
     }
 
+    pub fn direction(&self) -> isize {
+        self.status.direction
+    }
+
     pub fn reverse_direction(&mut self) {
         self.status.direction *= -1;
     }
     pub fn reset_direction(&mut self) {
         self.status.direction = -1;
+    }
+
+    pub fn alpha_set(&mut self, alpha: f64) {
+        self.status.alpha = alpha;
+    }
+
+    pub fn alpha(&self) -> f64 {
+        self.status.alpha
+    }
+
+    pub fn max_pawer_output_set(&mut self, power: f64) {
+        self.status.omni_setting.max_pawer_output = power;
+    }
+
+    pub fn max_pawer_output_reset(&mut self) {
+        self.status.omni_setting.max_pawer_output = MAX_PAWER_OUTPUT;
     }
 
     pub fn update(&self, powers: &HashMap<usize, f64>) {

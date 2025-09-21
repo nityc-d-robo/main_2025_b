@@ -11,10 +11,7 @@ use safe_drive::{
 };
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 mod functions;
-use crate::functions::{
-    ei::{self, Ei},
-    elevator::Elevator,
-};
+use crate::functions::{ei::Ei, elevator::Elevator};
 use controllers::*;
 use functions::omni::*;
 use functions::retaining_arm::RetainingArm;
@@ -51,23 +48,33 @@ fn main() -> Result<(), DynError> {
     selector.add_subscriber(
         subscriber_joy,
         Box::new({
-            let mut controller = controllers::Gamepad::new(controllers::DualShock4Layout);
+            let mut controller = controllers::Gamepad::new(controllers::DualSenseLayout);
             move |msg: TakenMsg<Joy>| proseed(msg, &mut controller, joy_mechanisms.clone())
         }),
     );
 
     let mut prev_motor_power = HashMap::new();
 
-    let alpha = 0.5; // 0.1ならゆっくり、0.5なら速く追従
     let cmd_mechanisms = mechanisms.clone();
     selector.add_subscriber(
         subscriber_cmd,
         Box::new(move |msg| {
             let omni = &mut cmd_mechanisms.borrow_mut().omni;
-            let target_power =
-                omni.omni_setting()
-                    .move_chassis(msg.linear.x, msg.linear.y, msg.angular.z);
+            let direcion = omni.direction();
+            let alpha = omni.alpha();
 
+            let target_power = omni.omni_setting().move_chassis(
+                msg.linear.x,
+                msg.linear.y,
+                direcion as f64 * -msg.angular.z,
+            );
+
+            pr_info!(
+                _logger,
+                "{} ,{}",
+                omni.omni_setting().max_pawer_output,
+                alpha
+            );
             for (i, &tp) in target_power.iter() {
                 prev_motor_power
                     .entry(*i)
@@ -86,7 +93,7 @@ fn main() -> Result<(), DynError> {
 
 fn proseed(
     msg: TakenMsg<Joy>,
-    contoller: &mut Gamepad<DualShock4Layout>,
+    contoller: &mut Gamepad<DualSenseLayout>,
     _mechanisms: Rc<RefCell<Mechanisms>>,
 ) {
     use controllers::combination::ButtonCombination as BC;
@@ -95,7 +102,19 @@ fn proseed(
 
     let mechanisms = &mut *_mechanisms.borrow_mut();
     let _logger = Logger::new(NODE_NAME);
+    {
+        if contoller.pressed_edge(&msg, Select) {
+            mechanisms.omni.reverse_direction();
+        }
 
+        if contoller.pressed(&msg, L1) {
+            mechanisms.omni.max_pawer_output_reset();
+            mechanisms.omni.alpha_set(1.0);
+        } else {
+            mechanisms.omni.max_pawer_output_set(500.);
+            mechanisms.omni.alpha_set(0.1);
+        }
+    }
     //roof
     {
         if BC::new()
@@ -142,74 +161,93 @@ fn proseed(
         {
             mechanisms.el.first_down();
             mechanisms.el.second_down();
-        } else {
-            mechanisms.el.first_stop();
-            mechanisms.el.second_stop();
-        }
-
-        if BC::new()
+        } else if BC::new()
             .add(Cross.state(Pressed))
             .add(Circle.state(Pressed))
             .evalute(contoller, &msg)
         {
             mechanisms.el.second_up();
+            mechanisms.el.first_stop();
         } else if BC::new()
             .add(DpadLeft.state(Pressed))
             .add(DpadDown.state(Pressed))
             .evalute(contoller, &msg)
         {
             mechanisms.el.second_down();
+            mechanisms.el.first_stop();
         } else {
             mechanisms.el.second_stop();
+            mechanisms.el.first_stop();
         }
     }
 
     //re
     {
-        let re_mode = BC::new().add(L2.state(Pressed)).add(R2.state(Pressed));
-        let allow_re_mode = vec![DpadLeft, DpadRight, Circle, Square, DpadUp, DpadDown];
-        if re_mode.ignores(&allow_re_mode).evalute(contoller, &msg) {
-            {
-                if re_mode
-                    .add(DpadLeft.state(Pressed))
-                    .evalute(contoller, &msg)
-                {
-                    mechanisms.re_arm.left_unfold();
-                } else if re_mode
-                    .add(DpadRight.state(Pressed))
-                    .evalute(contoller, &msg)
-                {
-                    mechanisms.re_arm.left_fold();
-                } else {
-                    mechanisms.re_arm.left_stop();
-                }
-            }
+        let allow_re_mode = vec![DpadLeft, DpadRight, Circle, Square];
 
+        {
+            //left
+            let re_l_mode = BC::new()
+                .add(L2.state(Pressed))
+                .add(R2.state(Ignore))
+                .ignores(&allow_re_mode);
+            if re_l_mode
+                .add(DpadLeft.state(Pressed))
+                .evalute(contoller, &msg)
             {
-                if re_mode.add(Circle.state(Pressed)).evalute(contoller, &msg) {
-                    mechanisms.re_arm.right_unfold();
-                } else if re_mode.add(Square.state(Pressed)).evalute(contoller, &msg) {
-                    mechanisms.re_arm.right_fold();
-                } else {
-                    mechanisms.re_arm.right_stop();
-                }
+                mechanisms.re_arm.left_unfold();
+            } else if re_l_mode
+                .add(DpadRight.state(Pressed))
+                .evalute(contoller, &msg)
+            {
+                mechanisms.re_arm.left_fold();
+            } else {
+                mechanisms.re_arm.left_stop();
             }
+        }
 
+        {
+            //right
+            let re_r_mode = BC::new()
+                .add(R2.state(Pressed))
+                .add(L2.state(Ignore))
+                .ignores(&allow_re_mode);
+
+            if re_r_mode
+                .add(Circle.state(Pressed))
+                .evalute(contoller, &msg)
             {
-                if re_mode.add(DpadUp.state(Pressed)).evalute(contoller, &msg) {
-                    mechanisms.re_arm.center_unfold();
-                } else if re_mode
-                    .add(DpadDown.state(Pressed))
-                    .evalute(contoller, &msg)
-                {
-                    mechanisms.re_arm.center_fold();
-                } else {
-                    mechanisms.re_arm.center_stop();
-                }
+                mechanisms.re_arm.right_unfold();
+            } else if re_r_mode
+                .add(Square.state(Pressed))
+                .evalute(contoller, &msg)
+            {
+                mechanisms.re_arm.right_fold();
+            } else {
+                mechanisms.re_arm.right_stop();
             }
-        } else {
-            mechanisms.re_arm.left_stop();
-            mechanisms.re_arm.right_stop();
+        }
+
+        {
+            //center
+            let re_c_mode = BC::new()
+                .add(R2.state(Pressed))
+                .add(L2.state(Pressed))
+                .ignores(&[DpadUp, DpadDown]);
+
+            if re_c_mode
+                .add(DpadUp.state(Pressed))
+                .evalute(contoller, &msg)
+            {
+                mechanisms.re_arm.center_unfold();
+            } else if re_c_mode
+                .add(DpadDown.state(Pressed))
+                .evalute(contoller, &msg)
+            {
+                mechanisms.re_arm.center_fold();
+            } else {
+                mechanisms.re_arm.center_stop();
+            }
         }
     }
     //ei
@@ -255,7 +293,6 @@ fn proseed(
                     .evalute(contoller, &msg)
                 {
                     mechanisms.ei.ud_up();
-                    pr_info!(_logger, "ei ud up");
                 } else if ei_mode
                     .add(DpadRight.state(Pressed))
                     .evalute(contoller, &msg)
@@ -274,7 +311,6 @@ fn proseed(
             }
         } else {
             mechanisms.ei.fin_stop();
-            mechanisms.ei.ud_stop();
         }
     }
 
