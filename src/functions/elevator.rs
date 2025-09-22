@@ -1,5 +1,6 @@
 use super::*;
 use motor_lib::{md, GrpcHandle};
+#[allow(unused_imports)]
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {

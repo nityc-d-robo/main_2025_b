@@ -69,12 +69,6 @@ fn main() -> Result<(), DynError> {
                 direcion as f64 * -msg.angular.z,
             );
 
-            pr_info!(
-                _logger,
-                "{} ,{}",
-                omni.omni_setting().max_pawer_output,
-                alpha
-            );
             for (i, &tp) in target_power.iter() {
                 prev_motor_power
                     .entry(*i)
@@ -105,20 +99,29 @@ fn proseed(
     {
         if contoller.pressed_edge(&msg, Select) {
             mechanisms.omni.reverse_direction();
+            mechanisms.re_arm.reverse_direction();
         }
 
         if contoller.pressed(&msg, L1) {
             mechanisms.omni.max_pawer_output_reset();
             mechanisms.omni.alpha_set(1.0);
         } else {
-            mechanisms.omni.max_pawer_output_set(500.);
+            mechanisms.omni.max_pawer_output_set();
             mechanisms.omni.alpha_set(0.1);
         }
     }
     //roof
     {
         if BC::new()
-            .add(L1.state(Pressed))
+            .add(L2.state(Pressed))
+            .add(Cross.state(PressedEdge))
+            .evalute(contoller, &msg)
+        {
+            mechanisms.ro_arm.bq_toggle();
+        }
+
+        if BC::new()
+            .add(L2.state(Pressed))
             .add(Circle.state(PressedEdge))
             .evalute(contoller, &msg)
         {
@@ -126,13 +129,29 @@ fn proseed(
         }
 
         if BC::new()
-            .add(L1.state(Pressed))
+            .add(L2.state(Pressed))
+            .add(DpadLeft.state(Pressed))
+            .evalute(contoller, &msg)
+        {
+            mechanisms.ro_arm.roof_right();
+        } else if BC::new()
+            .add(L2.state(Pressed))
+            .add(DpadRight.state(Pressed))
+            .evalute(contoller, &msg)
+        {
+            mechanisms.ro_arm.roof_left();
+        } else {
+            mechanisms.ro_arm.roof_stop();
+        }
+
+        if BC::new()
+            .add(L2.state(Pressed))
             .add(DpadUp.state(Pressed))
             .evalute(contoller, &msg)
         {
             mechanisms.ro_arm.ud_up();
         } else if BC::new()
-            .add(L1.state(Pressed))
+            .add(L2.state(Pressed))
             .add(DpadDown.state(Pressed))
             .evalute(contoller, &msg)
         {
@@ -142,7 +161,7 @@ fn proseed(
         }
 
         if BC::new()
-            .add(L1.state(Pressed))
+            .add(L2.state(Pressed))
             .add(Cross.state(PressedEdge))
             .evalute(contoller, &msg)
         {
@@ -188,8 +207,8 @@ fn proseed(
         {
             //left
             let re_l_mode = BC::new()
-                .add(L2.state(Pressed))
-                .add(R2.state(Ignore))
+                .add(L1.state(Pressed))
+                .add(R1.state(Ignore))
                 .ignores(&allow_re_mode);
             if re_l_mode
                 .add(DpadLeft.state(Pressed))
@@ -209,8 +228,8 @@ fn proseed(
         {
             //right
             let re_r_mode = BC::new()
-                .add(R2.state(Pressed))
-                .add(L2.state(Ignore))
+                .add(R1.state(Pressed))
+                .add(L1.state(Ignore))
                 .ignores(&allow_re_mode);
 
             if re_r_mode
@@ -231,8 +250,8 @@ fn proseed(
         {
             //center
             let re_c_mode = BC::new()
-                .add(R2.state(Pressed))
-                .add(L2.state(Pressed))
+                .add(R1.state(Pressed))
+                .add(L1.state(Pressed))
                 .ignores(&[DpadUp, DpadDown]);
 
             if re_c_mode
@@ -253,17 +272,21 @@ fn proseed(
     //ei
 
     {
-        let ei_mode = BC::new().add(R1.state(Pressed));
+        let ei_mode = BC::new().add(R2.state(Pressed));
         let allow_ei_mode = vec![
             DpadLeft, DpadRight, Circle, Square, Triangle, DpadUp, DpadDown, Cross,
         ];
         if ei_mode.ignores(&allow_ei_mode).evalute(contoller, &msg) {
             {
                 if ei_mode.add(DpadUp.state(Pressed)).evalute(contoller, &msg) {
-                    mechanisms.ei.roller_ud_up(5.0);
-                }
-                if ei_mode.add(DpadUp.state(Pressed)).evalute(contoller, &msg) {
-                    mechanisms.ei.roller_ud_down(5.0);
+                    mechanisms.ei.roller_ud_up();
+                } else if ei_mode
+                    .add(DpadDown.state(Pressed))
+                    .evalute(contoller, &msg)
+                {
+                    mechanisms.ei.roller_ud_down();
+                } else {
+                    mechanisms.ei.roller_ud_stop();
                 }
             }
 

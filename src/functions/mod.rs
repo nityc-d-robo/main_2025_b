@@ -50,11 +50,8 @@ pub enum MdAdress {
     RoofArmUd = 12,
     EiRoller,
     EiFin,
-}
-
-pub enum SmdAdress {
-    EiRollerUd = 0,
-    Roof,
+    Roof = 10,
+    EiRollerUd = 15,
 }
 
 pub enum SdAdress {

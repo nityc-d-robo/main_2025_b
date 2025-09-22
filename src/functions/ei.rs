@@ -1,10 +1,11 @@
 use super::*;
-use motor_lib::{md, sd, smd, GrpcHandle};
+use motor_lib::{md, sd, GrpcHandle};
+#[allow(unused_imports)]
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
     roller: isize,
-    roller_ud: f64,
+    roller_ud: isize,
     fin: isize,
     ud: isize,
     bq: isize,
@@ -13,7 +14,7 @@ impl Status {
     pub fn new() -> Self {
         Self {
             roller: 0,
-            roller_ud: 0.0,
+            roller_ud: 0,
             fin: 0,
             ud: 0,
             bq: 0,
@@ -71,12 +72,16 @@ impl Ei {
         self.status.fin = 0;
     }
 
-    pub fn roller_ud_up(&mut self, dx: f64) {
-        self.status.roller_ud += dx.max(0.);
+    pub fn roller_ud_up(&mut self) {
+        self.status.roller_ud = 1;
     }
 
-    pub fn roller_ud_down(&mut self, dx: f64) {
-        self.status.roller_ud -= dx.max(0.);
+    pub fn roller_ud_down(&mut self) {
+        self.status.roller_ud = -1;
+    }
+
+    pub fn roller_ud_stop(&mut self) {
+        self.status.roller_ud = 0;
     }
 
     pub fn update(&mut self) {
@@ -99,18 +104,19 @@ impl Ei {
             0,
         );
 
-        // let _ = smd::send_angle(
-        //     &self.handle,
-        //     SmdAdress::EiRollerUd as u8,
-        //     0,
-        //     self.status.roller_ud.min(360.) as i16,
-        // );
+        md::send_limsw(
+            &self.handle,
+            MdAdress::EiRollerUd as u8,
+            if self.status.roller_ud == 1 { 0 } else { 1 }, //いい感じに変えてね
+            (self.status.roller_ud * 400) as i16,
+            0,
+        );
 
-        // let _ = sd::send_power(
-        //     &self.handle,
-        //     SdAdress::EiBq as u8,
-        //     0,
-        //     self.status.bq as i16 * 999,
-        // );
+        sd::send_power(
+            &self.handle,
+            SdAdress::EiBq as u8,
+            0,
+            self.status.bq as i16 * 200,
+        );
     }
 }

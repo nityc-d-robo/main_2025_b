@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use super::MdAdress;
 use super::*;
-use motor_lib::{md, GrpcHandle};
+use motor_lib::{md, sd, GrpcHandle};
 use omni_control::{Chassis, OmniSetting, Tire};
+#[allow(unused_imports)]
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
@@ -35,7 +36,7 @@ impl Status {
                     },
                 },
                 max_pawer_input: MAX_PAWER_INPUT,
-                max_pawer_output: MAX_PAWER_OUTPUT,
+                max_pawer_output: MAX_PAWER_OUTPUT_NORMAL,
                 max_revolution: MAX_REVOLUTION,
             },
             alpha: 1.0,
@@ -84,25 +85,61 @@ impl Omni {
         self.status.alpha
     }
 
-    pub fn max_pawer_output_set(&mut self, power: f64) {
-        self.status.omni_setting.max_pawer_output = power;
+    pub fn max_pawer_output_set(&mut self) {
+        self.status.omni_setting.max_pawer_output = MAX_PAWER_OUTPUT_BOOST;
     }
 
     pub fn max_pawer_output_reset(&mut self) {
-        self.status.omni_setting.max_pawer_output = MAX_PAWER_OUTPUT;
+        self.status.omni_setting.max_pawer_output = MAX_PAWER_OUTPUT_NORMAL;
     }
 
     pub fn update(&self, powers: &HashMap<usize, f64>) {
+        {
+            //LED 治安悪い
+
+            if self.direction() == 1 {
+                sd::send_power(
+                    &self.handle,
+                    SdAdress::HeadBq as u8,
+                    1,
+                    (999 as f32 * (40. / 100.)) as i16,
+                );
+                sd::send_power(&self.handle, SdAdress::EiBq as u8, 1, 0);
+            } else {
+                sd::send_power(
+                    &self.handle,
+                    SdAdress::EiBq as u8,
+                    1,
+                    (999 as f32 * (40. / 100.)) as i16,
+                );
+                sd::send_power(&self.handle, SdAdress::HeadBq as u8, 1, 0);
+            }
+        }
+
+        //オムニのsend_speed
         for i in powers.keys() {
-            md::send_pwm(
-                &self.handle,
-                *i as u8,
-                powers[i] as i16 * self.status.direction as i16,
-            );
+            {
+                // send_pwm版
+                md::send_pwm(
+                    &self.handle,
+                    *i as u8,
+                    powers[i] as i16 * self.status.direction as i16,
+                );
+            }
+
+            { // send_speed版
+                 // md::send_speed(
+                 //     &self.handle,
+                 //     *i as u8,
+                 //     powers[i] as i16 * self.status.direction as i16,
+                 // );
+            }
         }
     }
 }
 
 pub const MAX_PAWER_INPUT: f64 = 160.;
-pub const MAX_PAWER_OUTPUT: f64 = 1000.;
 pub const MAX_REVOLUTION: f64 = 5400.;
+
+pub const MAX_PAWER_OUTPUT_NORMAL: f64 = 500.;
+pub const MAX_PAWER_OUTPUT_BOOST: f64 = 1000.;

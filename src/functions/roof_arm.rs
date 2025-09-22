@@ -1,12 +1,13 @@
 use super::*;
-use motor_lib::{md, sd, smd, GrpcHandle};
+use motor_lib::{md, sd, GrpcHandle};
+#[allow(unused_imports)]
 use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
     ud: isize, // 正転　1 停止　0 反転　-1
     right: isize,
     bq: isize,
-    roof: f64,
+    roof: isize,
 }
 impl Status {
     pub fn new() -> Self {
@@ -14,7 +15,7 @@ impl Status {
             ud: 0,
             right: 0,
             bq: 0,
-            roof: 0.0,
+            roof: 0,
         }
     }
 }
@@ -38,12 +39,16 @@ impl RoofArm {
     }
 
     //
-    pub fn roof_ud_right(&mut self, dx: f64) {
-        self.status.roof += dx.max(0.);
+    pub fn roof_right(&mut self) {
+        self.status.roof = 1;
     }
 
-    pub fn roller_ud_left(&mut self, dx: f64) {
-        self.status.roof -= dx.max(0.);
+    pub fn roof_left(&mut self) {
+        self.status.roof = -1;
+    }
+
+    pub fn roof_stop(&mut self) {
+        self.status.roof = 0;
     }
 
     // ud
@@ -92,17 +97,17 @@ impl RoofArm {
             (-800 * self.status.right) as i16,
         );
 
-        // let _ = sd::send_power(
-        //     &self.handle,
-        //     SdAdress::EiBq as u8,
-        //     0,
-        //     self.status.bq as i16 * 999,
-        // );
-        // let _ = smd::send_angle(
-        //     &self.handle,
-        //     SmdAdress::Roof as u8,
-        //     0,
-        //     self.status.roof.min(360.).max(0.) as i16,
-        // );
+        sd::send_power(
+            &self.handle,
+            SdAdress::HeadBq as u8,
+            0,
+            self.status.bq as i16 * 200,
+        );
+
+        md::send_pwm(
+            &self.handle,
+            MdAdress::Roof as u8,
+            (400 * self.status.roof) as i16,
+        );
     }
 }
