@@ -9,6 +9,7 @@ use safe_drive::{logger::Logger, pr_info};
 
 pub struct Status {
     direction: isize, // 正転　-1 停止　0 反転　1 回路が悪い
+    pub prev_motor_power: HashMap<usize, f64>,
     omni_setting: OmniSetting,
     alpha: f64,
 }
@@ -16,6 +17,7 @@ impl Status {
     pub fn new() -> Self {
         Self {
             direction: -1,
+            prev_motor_power: HashMap::new(),
             omni_setting: OmniSetting {
                 chassis: Chassis {
                     fl: Tire {
@@ -35,6 +37,7 @@ impl Status {
                         raito: 1.,
                     },
                 },
+
                 max_pawer_input: MAX_PAWER_INPUT,
                 max_pawer_output: MAX_PAWER_OUTPUT_NORMAL,
                 max_revolution: MAX_REVOLUTION,
@@ -93,53 +96,46 @@ impl Omni {
         self.status.omni_setting.max_pawer_output = MAX_PAWER_OUTPUT_NORMAL;
     }
 
-    pub fn update(&self, powers: &HashMap<usize, f64>) {
-        {
-            //LED 治安悪い
-
-            if self.direction() == 1 {
-                sd::send_power(
-                    &self.handle,
-                    SdAdress::HeadBq as u8,
-                    1,
-                    (999 as f32 * (40. / 100.)) as i16,
-                );
-                sd::send_power(&self.handle, SdAdress::EiBq as u8, 1, 0);
-            } else {
-                sd::send_power(
-                    &self.handle,
-                    SdAdress::EiBq as u8,
-                    1,
-                    (999 as f32 * (40. / 100.)) as i16,
-                );
-                sd::send_power(&self.handle, SdAdress::HeadBq as u8, 1, 0);
-            }
+    pub fn direcion_update(&self) {
+        if self.direction() == 1 {
+            sd::send_power(
+                &self.handle,
+                SdAdress::HeadBq as u8,
+                1,
+                (999 as f32 * (40. / 100.)) as i16,
+            );
+            sd::send_power(&self.handle, SdAdress::EiBq as u8, 1, 0);
+        } else {
+            sd::send_power(
+                &self.handle,
+                SdAdress::EiBq as u8,
+                1,
+                (999 as f32 * (40. / 100.)) as i16,
+            );
+            sd::send_power(&self.handle, SdAdress::HeadBq as u8, 1, 0);
         }
+    }
 
-        //オムニのsend_speed
+    pub fn update(&self) {
+        // pr_info!(self._logger, "direction:{}", self.direction());
+
+        let powers: &HashMap<usize, f64> = &self.status.prev_motor_power;
         for i in powers.keys() {
             {
-                // send_pwm版
-                md::send_pwm(
+                // pr_info!(self._logger, "power_{}:{}", i, -powers[i]);
+
+                md::send_speed(
                     &self.handle,
                     *i as u8,
-                    powers[i] as i16 * self.status.direction as i16,
+                    -powers[i] as i16 * self.status.direction as i16,
                 );
-            }
-
-            { // send_speed版
-                 // md::send_speed(
-                 //     &self.handle,
-                 //     *i as u8,
-                 //     powers[i] as i16 * self.status.direction as i16,
-                 // );
             }
         }
     }
 }
 
-pub const MAX_PAWER_INPUT: f64 = 160.;
-pub const MAX_REVOLUTION: f64 = 5400.;
+pub const MAX_PAWER_INPUT: f64 = 1.;
+pub const MAX_REVOLUTION: f64 = 1.;
 
-pub const MAX_PAWER_OUTPUT_NORMAL: f64 = 500.;
-pub const MAX_PAWER_OUTPUT_BOOST: f64 = 1000.;
+pub const MAX_PAWER_OUTPUT_NORMAL: f64 = 80.;
+pub const MAX_PAWER_OUTPUT_BOOST: f64 = 999. / 4.;

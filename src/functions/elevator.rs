@@ -93,6 +93,7 @@ impl Elevator {
         Self::approach(&mut self.status.prev_first, self.status.target_first);
         Self::approach(&mut self.status.prev_second, self.status.target_second);
 
+        pr_info!(self._logger, "second:{}", self.status.prev_second);
         md::send_limsw(
             &self.handle,
             MdAdress::ElevatorSecond as u8,
@@ -100,6 +101,8 @@ impl Elevator {
             -self.status.prev_second,
             0,
         );
+
+        pr_info!(self._logger, "fist:{}", self.status.prev_first);
         md::send_limsw(
             &self.handle,
             MdAdress::ElevatorFirst as u8,

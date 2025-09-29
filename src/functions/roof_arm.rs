@@ -83,6 +83,7 @@ impl RoofArm {
     }
 
     pub fn update(&mut self) {
+        // pr_info!(self._logger, "ud:{}", self.status.ud);
         md::send_limsw(
             &self.handle,
             MdAdress::RoofArmUd as u8,
@@ -91,12 +92,14 @@ impl RoofArm {
             0,
         );
 
+        // pr_info!(self._logger, "right:{}", self.status.right);
         md::send_pwm(
             &self.handle,
             MdAdress::RoofArmRight as u8,
-            (-800 * self.status.right) as i16,
+            (-600 * self.status.right) as i16,
         );
 
+        // pr_info!(self._logger, "bq:{}", self.status.bq);
         sd::send_power(
             &self.handle,
             SdAdress::HeadBq as u8,
@@ -104,10 +107,11 @@ impl RoofArm {
             self.status.bq as i16 * 200,
         );
 
+        // pr_info!(self._logger, "roof:{}", self.status.roof);
         md::send_pwm(
             &self.handle,
             MdAdress::Roof as u8,
-            (400 * self.status.roof) as i16,
+            (300 * self.status.roof) as i16,
         );
     }
 }

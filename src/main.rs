@@ -1,4 +1,3 @@
-use safe_drive::msg::common_interfaces::geometry_msgs::msg;
 #[allow(unused_imports)]
 use safe_drive::{
     context::Context,
@@ -9,7 +8,6 @@ use safe_drive::{
     topic::publisher::Publisher,
     topic::subscriber::TakenMsg,
 };
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
 mod functions;
 use crate::functions::{ei::Ei, elevator::Elevator};
 use controllers::*;
@@ -34,49 +32,19 @@ fn main() -> Result<(), DynError> {
     let node = ctx.create_node(NODE_NAME, None, Default::default())?;
     let subscriber_joy = node.create_subscriber::<sensor_msgs::msg::Joy>("joy", None)?;
 
-    let subscriber_cmd = node.create_subscriber::<msg::Twist>("cmd_vel", None)?;
-
-    let mechanisms = Rc::new(RefCell::new(Mechanisms {
+    let mut mechanisms = Mechanisms {
         re_arm: RetainingArm::new(URL, NODE_NAME),
         ro_arm: RoofArm::new(URL, NODE_NAME),
         el: Elevator::new(URL, NODE_NAME),
         omni: Omni::new(URL, NODE_NAME),
         ei: Ei::new(URL, NODE_NAME),
-    }));
+    };
 
-    let joy_mechanisms = mechanisms.clone();
     selector.add_subscriber(
         subscriber_joy,
         Box::new({
             let mut controller = controllers::Gamepad::new(controllers::DualSenseLayout);
-            move |msg: TakenMsg<Joy>| proseed(msg, &mut controller, joy_mechanisms.clone())
-        }),
-    );
-
-    let mut prev_motor_power = HashMap::new();
-
-    let cmd_mechanisms = mechanisms.clone();
-    selector.add_subscriber(
-        subscriber_cmd,
-        Box::new(move |msg| {
-            let omni = &mut cmd_mechanisms.borrow_mut().omni;
-            let direcion = omni.direction();
-            let alpha = omni.alpha();
-
-            let target_power = omni.omni_setting().move_chassis(
-                msg.linear.x,
-                msg.linear.y,
-                direcion as f64 * -msg.angular.z,
-            );
-
-            for (i, &tp) in target_power.iter() {
-                prev_motor_power
-                    .entry(*i)
-                    .and_modify(|prev| *prev += alpha * (tp - *prev))
-                    .or_insert(tp);
-            }
-
-            omni.update(&prev_motor_power);
+            move |msg: TakenMsg<Joy>| proseed(msg, &mut controller, &mut mechanisms)
         }),
     );
 
@@ -88,13 +56,12 @@ fn main() -> Result<(), DynError> {
 fn proseed(
     msg: TakenMsg<Joy>,
     contoller: &mut Gamepad<DualSenseLayout>,
-    _mechanisms: Rc<RefCell<Mechanisms>>,
+    mechanisms: &mut Mechanisms,
 ) {
     use controllers::combination::ButtonCombination as BC;
     use controllers::combination::State::*;
     use controllers::Button::*;
 
-    let mechanisms = &mut *_mechanisms.borrow_mut();
     let _logger = Logger::new(NODE_NAME);
     {
         if contoller.pressed_edge(&msg, Select) {
@@ -102,12 +69,16 @@ fn proseed(
             mechanisms.re_arm.reverse_direction();
         }
 
-        if contoller.pressed(&msg, L1) {
-            mechanisms.omni.max_pawer_output_reset();
-            mechanisms.omni.alpha_set(1.0);
-        } else {
+        if BC::new()
+            .add(L1.state(Pressed))
+            .add(L2.state(Pressed))
+            .evalute(contoller, &msg)
+        {
             mechanisms.omni.max_pawer_output_set();
             mechanisms.omni.alpha_set(0.1);
+        } else {
+            mechanisms.omni.max_pawer_output_reset();
+            mechanisms.omni.alpha_set(1.0);
         }
     }
     //roof
@@ -341,4 +312,36 @@ fn proseed(
     mechanisms.ro_arm.update();
     mechanisms.el.update();
     mechanisms.ei.update();
+    mechanisms.omni.direcion_update();
+
+    omni_fn(&msg, contoller, &mut mechanisms.omni);
+}
+
+fn omni_fn(msg: &TakenMsg<Joy>, contoller: &mut Gamepad<DualSenseLayout>, omni: &mut Omni) {
+    let direcion = omni.direction();
+    let alpha = omni.alpha();
+    use controllers::Axes::*;
+
+    let target_power = omni.omni_setting().move_chassis(
+        contoller.axis(&msg, StickLX) as f64,
+        contoller.axis(&msg, StickLY) as f64,
+        direcion as f64 * -contoller.axis(&msg, StickRX) as f64,
+    );
+
+    let threshold = 10.;
+    for (i, &tp) in target_power.iter() {
+        omni.status
+            .prev_motor_power
+            .entry(*i)
+            .and_modify(|prev| {
+                let delta: f64 = alpha * (tp - *prev);
+                if delta.abs() < threshold {
+                    *prev = tp; // 小さい変化は直接目標値に
+                } else {
+                    *prev += delta;
+                }
+            })
+            .or_insert(tp);
+    }
+    omni.update();
 }

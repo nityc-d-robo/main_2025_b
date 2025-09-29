@@ -93,25 +93,33 @@ impl RetainingArm {
             self.status.right = temp;
         }
 
+        // pr_info!(self._logger, "left:{}", self.status.left);
         md::send_limsw(
             &self.handle,
             MdAdress::RetainingArmLeft as u8,
             if self.status.left == -1 { 1 } else { 0 },
-            (600 * self.status.left) as i16,
+            (500 * self.status.left) as i16,
             0,
         );
+
+        // pr_info!(self._logger, "right:{}", self.status.right);
         md::send_limsw(
             &self.handle,
             MdAdress::RetainingArmRight as u8,
             if self.status.right == -1 { 0 } else { 1 },
-            (600 * self.status.right) as i16,
+            (500 * self.status.right) as i16,
             0,
         );
 
+        // pr_info!(self._logger, "center:{}", self.status.center);
         md::send_pwm(
             &self.handle,
             MdAdress::RetainingCenter as u8,
-            (600 * self.status.center) as i16,
+            if self.status.center == 0 {
+                -300
+            } else {
+                900 * self.status.center
+            } as i16,
         );
 
         // direction　一応元に戻す

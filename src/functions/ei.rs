@@ -73,11 +73,11 @@ impl Ei {
     }
 
     pub fn roller_ud_up(&mut self) {
-        self.status.roller_ud = 1;
+        self.status.roller_ud = -1;
     }
 
     pub fn roller_ud_down(&mut self) {
-        self.status.roller_ud = -1;
+        self.status.roller_ud = 1;
     }
 
     pub fn roller_ud_stop(&mut self) {
@@ -85,33 +85,39 @@ impl Ei {
     }
 
     pub fn update(&mut self) {
+        pr_info!(self._logger, "roller:{}", self.status.roller);
         md::send_pwm(
             &self.handle,
             MdAdress::EiRoller as u8,
             (800 * self.status.roller) as i16,
         );
+
+        pr_info!(self._logger, "fin:{}", self.status.fin);
         md::send_pwm(
             &self.handle,
             MdAdress::EiFin as u8,
-            (400 * self.status.fin) as i16,
+            (600 * self.status.fin) as i16,
         );
 
+        pr_info!(self._logger, "ud:{}", self.status.ud);
         md::send_limsw(
             &self.handle,
             MdAdress::EiUd as u8,
             if self.status.ud == 1 { 0 } else { 1 },
-            (-500 * self.status.ud) as i16,
+            (-700 * self.status.ud) as i16,
             0,
         );
 
+        pr_info!(self._logger, "roller_ud:{}", self.status.roller_ud);
         md::send_limsw(
             &self.handle,
             MdAdress::EiRollerUd as u8,
-            if self.status.roller_ud == 1 { 0 } else { 1 }, //いい感じに変えてね
-            (self.status.roller_ud * 400) as i16,
+            if self.status.roller_ud == 1 { 1 } else { 0 }, //いい感じに変えてね
+            (self.status.roller_ud * 600) as i16,
             0,
         );
 
+        pr_info!(self._logger, "bq:{}", self.status.bq);
         sd::send_power(
             &self.handle,
             SdAdress::EiBq as u8,

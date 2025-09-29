@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 safe_drive = "0.4"
-controllers = { git = "https://github.com/nityc-d-robo/controllers", rev = "0c83b94e4ea77240b37f90ce24ba64c6782323e9" }
+controllers = { git = "https://github.com/nityc-d-robo/controllers", rev = "abf92c4e6146118e9d3dd5b1a7a0d2ef889569ca" }
 motor_lib = { git = "https://github.com/nityc-d-robo/motor_lib.git", rev = "f0f204e0a97bbd39150dcc3bab26145dfa8c90b6" }
 omni_control = { git = "https://github.com/nityc-d-robo/omni_control", rev = "0b7351aeacc8de9d21d064cb4a347b4081abba62" }
 [package.metadata.ros]
